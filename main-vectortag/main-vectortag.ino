@@ -3,7 +3,7 @@
 #include <CurieTime.h>
 
 // Used in determining noise floor
-float stdTolerance = 2;
+float stdTolerance = 1.5;
 
 bool spiked[6];
 int noiseMeans[6];
@@ -17,7 +17,7 @@ struct pulse {
 };
 
 #define PULSE_HISTORY 3
-#define MIN_PULSE_WIDTH 30
+#define MIN_PULSE_WIDTH 20
 pulse pulseStack[6][PULSE_HISTORY];
 int currentPulse[6];
 
@@ -70,7 +70,8 @@ void loop() {
     int cpulse = currentPulse[pin];
     pulse ppulse = pulseStack[pin][cpulse];
     if(!spiked[pin] && (spike > 0)) {
-      currentPulse[pin] = (currentPulse[pin] + 1) % PULSE_HISTORY;
+      cpulse = (currentPulse[pin] + 1) % PULSE_HISTORY;
+      currentPulse[pin] = cpulse;
       pulseStack[pin][cpulse] = {ttime,0,spike};
       spiked[pin] =  true;
     } else if(spiked[pin] && !(spike > 0)){
@@ -79,9 +80,13 @@ void loop() {
         spikeValue = ppulse.maxHeight;
       }
       pulseStack[pin][cpulse] = {ppulse.start, ttime, spikeValue};
-      if((pulseStack[pin][cpulse].end - pulseStack[pin][cpulse].start) > MIN_PULSE_WIDTH){
+      if((pulseStack[pin][cpulse].end - pulseStack[pin][cpulse].start) >= MIN_PULSE_WIDTH){
         spiked[pin]=false;
         printPulse(pulseStack[pin][cpulse]);
+        if(validPulseGroup(pin)){
+          Serial.println(pulseGroupAngle(pin));
+          Serial.println();
+        }
       } else {
         pulseStack[pin][cpulse].start=ttime;
       }
@@ -96,13 +101,13 @@ void loop() {
    }
 }
   
-}
+
 
 int* measureNoise(int pin,int size){
     int* samples = (int*) malloc(size*sizeof(int));
     for(int i=0; i<size; i++){
       samples[i] = analogRead(pin);
-      delayMicroseconds(20);
+      delayMicroseconds(59);
     }
 
     return samples;
@@ -152,7 +157,7 @@ void printPulse(pulse p){
   Serial.println(p.maxHeight);
 }
 
-bool validPulseGroup(pin){
+bool validPulseGroup(int pin){
   int cpulse = currentPulse[pin];
   pulse p1 = pulseStack[pin][(cpulse - 2) % PULSE_HISTORY];
   pulse p2 = pulseStack[pin][(cpulse - 1) % PULSE_HISTORY];
@@ -163,5 +168,25 @@ bool validPulseGroup(pin){
   long p3time = p3.end - p3.start;
 
   return (p1time > p2time) && (p3time > p2time);
+}
+
+float pulseGroupAngle(int pin){
+  int cpulse = currentPulse[pin];
+  pulse p1 = pulseStack[pin][(cpulse - 2) % PULSE_HISTORY];
+  pulse p2 = pulseStack[pin][(cpulse - 1) % PULSE_HISTORY];
+  pulse p3 = pulseStack[pin][(cpulse - 0) % PULSE_HISTORY];
+
+  long p2start = p2.start - p1.start;
+  long p3start = p3.start - p1.start;
+
+  float angle = ((float) p2start) / ((float) p3start);
+  Serial.println(angle);
+  Serial.println();
+  
+  angle = angle - 0.5;
+  angle = angle * 180;
+
+  return angle;
+  
 }
 
