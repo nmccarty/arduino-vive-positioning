@@ -4,7 +4,6 @@
 
 // Used in determining noise floor
 float stdTolerance = 2;
-int minPulseLength = 10;
 
 bool spiked[6];
 int noiseMeans[6];
@@ -18,6 +17,7 @@ struct pulse {
 };
 
 #define PULSE_HISTORY 3
+#define MIN_PULSE_WIDTH 20
 pulse pulseStack[6][PULSE_HISTORY];
 int currentPulse[6];
 
@@ -77,9 +77,11 @@ void loop() {
         spikeValue = ppulse.maxHeight;
       }
       pulseStack[pin][cpulse] = {ppulse.start, ttime, spikeValue};
-
-      printPulse(pulseStack[pin][cpulse]);
-      spiked[pin] = false;
+      if((pulseStack[pin][cpulse].end - pulseStack[pin][cpulse].start) > MIN_PULSE_WIDTH){
+        spiked[pin]=false;
+        printPulse(pulseStack[pin][cpulse]);
+      }
+       
     }
     
    }
