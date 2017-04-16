@@ -27,6 +27,9 @@ void setup() {
   while(!Serial);
   digitalWrite(13, 0);
 
+  Serial.println("You have 5 seconds to get your hands out of the way before calibration, you fuck.");
+  delay(5000);
+
   analogReadResolution(12);
 
   int numNoiseSamples= 100;
@@ -80,6 +83,8 @@ void loop() {
       if((pulseStack[pin][cpulse].end - pulseStack[pin][cpulse].start) > MIN_PULSE_WIDTH){
         spiked[pin]=false;
         printPulse(pulseStack[pin][cpulse]);
+      } else {
+        pulseStack[pin][cpulse].start=ttime;
       }
        
     }
