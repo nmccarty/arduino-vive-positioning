@@ -23,7 +23,7 @@ int currentPulse[6];
 
 void setup() {
   digitalWrite(13, 1);
-  Serial.begin(2000000);
+  Serial.begin(115200);
   while(!Serial);
   digitalWrite(13, 0);
 
@@ -142,11 +142,10 @@ int detectSpike(int pin, int noise, int std){
 
 void printPulse(pulse p){
   Serial.print(p.start);
-  Serial.print(" ");
+  Serial.print(",");
   Serial.print(p.end - p.start);
-  Serial.print(" ");
+  Serial.print(",");
   Serial.println(p.maxHeight);
-  Serial.println();
 }
 
 
