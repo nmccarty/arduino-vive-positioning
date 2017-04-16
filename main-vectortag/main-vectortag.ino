@@ -187,25 +187,26 @@ void loop() {
     }
     }
 
-    if(validPulseGroup(0) && validPulseGroup(1)){
+    if(validPulseGroup(0)){
       pulse pulse1 = pulseStack[0][currentPulse[0]];
       pulse pulse2 = pulseStack[1][currentPulse[1]];
 
-      if((pulse1.end > lastPulseTime[0]) && (pulse2.end > lastPulseTime[1]) && (pulse1.end > lastPulseTime[1]) && (pulse2.end > lastPulseTime[0])){
+      if((pulse1.end > lastPulseTime[0])){
 
-        if(((pulse1.end - lastPulseTime[0] )< 100000) && ((pulse2.end - lastPulseTime[1]) < 100000)){
+        //if(((pulse1.end - lastPulseTime[0] )< 80000)){
           float pgangle1 = pulseGroupAngle(0);
           float pgangle2 = pulseGroupAngle(1);
 
-          prevPulse2[0] = prevPulse1[0];
+          prevPulse1[1] = prevPulse1[0];
           prevPulse1[0] = pgangle1;
 
-          prevPulse2[1] = prevPulse1[1];
-          prevPulse1[1] = pgangle2;
-
-          Serial.print(prevPulse1[0]);
-          Serial.print(" ");
-          Serial.println(prevPulse1[1]);
+          if(pgangle1 > 0){
+            Serial.print("x ");
+            Serial.println(pgangle1,20); 
+          } else {
+            Serial.print("y ");
+            Serial.println(pgangle1,20);
+          }
 
           /*const float 
 
@@ -217,7 +218,7 @@ void loop() {
 
 
         
-        }
+        //}
         lastPulseTime[0] = pulse1.end;
         lastPulseTime[1] = pulse2.end;
       }
