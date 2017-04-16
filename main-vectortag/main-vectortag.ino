@@ -67,14 +67,13 @@ void loop() {
     long ttime = micros();
     int pin = i;
     int spike = detectSpike(0,noiseMeans[pin],noiseStds[pin]);
+    int cpulse = currentPulse[pin];
+    pulse ppulse = pulseStack[pin][cpulse];
     if(!spiked[pin] && (spike > 0)) {
       currentPulse[pin] = (currentPulse[pin] + 1) % PULSE_HISTORY;
-      int cpulse = currentPulse[pin];
       pulseStack[pin][cpulse] = {ttime,0,spike};
       spiked[pin] =  true;
     } else if(spiked[pin] && !(spike > 0)){
-      int cpulse = currentPulse[pin];
-      pulse ppulse = pulseStack[pin][cpulse];
       int spikeValue = spike;
       if(spikeValue < ppulse.maxHeight){
         spikeValue = ppulse.maxHeight;
@@ -87,6 +86,11 @@ void loop() {
         pulseStack[pin][cpulse].start=ttime;
       }
        
+    } else if (spiked[pin]){
+      if(spike > ppulse.maxHeight){
+        pulseStack[pin][cpulse].maxHeight = spike;
+      }
+    }
     }
     
    }
@@ -148,4 +152,16 @@ void printPulse(pulse p){
   Serial.println(p.maxHeight);
 }
 
+bool validPulseGroup(pin){
+  int cpulse = currentPulse[pin];
+  pulse p1 = pulseStack[pin][(cpulse - 2) % PULSE_HISTORY];
+  pulse p2 = pulseStack[pin][(cpulse - 1) % PULSE_HISTORY];
+  pulse p3 = pulseStack[pin][(cpulse - 0) % PULSE_HISTORY];
+
+  long p1time = p1.end - p1.start;
+  long p2time = p2.end - p2.start;
+  long p3time = p3.end - p3.start;
+
+  return (p1time > p2time) && (p3time > p2time);
+}
 
