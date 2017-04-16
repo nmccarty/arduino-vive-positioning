@@ -3,12 +3,18 @@
 #include <CurieTime.h>
 
 // Used in determining noise floor
-float stdTolerance = 1.5;
+float stdTolerance = 1;
 
 bool spiked[6];
 int noiseMeans[6];
 int noiseStds[6];
 long lastSpike[6];
+
+long lastPulseTime[6];
+
+bool triggered = false;
+
+int buttonPin=7;
 
 struct pulse {
   long start;
@@ -53,7 +59,10 @@ void setup() {
   for(int i=0; i<6; i++){
     spiked[i] = false;
     currentPulse[i] = 0;
+    lastPulseTime[i] = 0;
   }
+
+  pinMode(buttonPin,INPUT);
 
   delay(2000);
 
@@ -62,7 +71,16 @@ void setup() {
 
 void loop() {
   while(true){
-   int activePins = 1;
+
+   bool trigger = digitalRead(buttonPin) == HIGH;
+   if(!triggered && trigger){
+    Serial.println("trigger");
+    triggered = true;
+   } else if(triggered && !trigger) {
+    triggered=false;
+   }
+    
+   int activePins = 2;
    for(int i = 0; i < activePins; i++){
     long ttime = micros();
     int pin = i;
@@ -82,11 +100,6 @@ void loop() {
       pulseStack[pin][cpulse] = {ppulse.start, ttime, spikeValue};
       if((pulseStack[pin][cpulse].end - pulseStack[pin][cpulse].start) >= MIN_PULSE_WIDTH){
         spiked[pin]=false;
-        //printPulse(pulseStack[pin][cpulse]);
-        if(validPulseGroup(pin)){
-          Serial.println(pulseGroupAngle(pin));
-          Serial.println();
-        }
       } else {
         pulseStack[pin][cpulse].start=ttime;
       }
@@ -96,6 +109,19 @@ void loop() {
         pulseStack[pin][cpulse].maxHeight = spike;
       }
     }
+    }
+
+    if(validPulseGroup(0) && validPulseGroup(1)){
+      pulse pulse1 = pulseStack[0][currentPulse[0]];
+      pulse pulse2 = pulseStack[1][currentPulse[1]];
+
+      if((pulse1.end > lastPulseTime[0]) && (pulse2.end > lastPulseTime[1])){
+        lastPulseTime[0] = pulse1.end;
+        lastPulseTime[1] = pulse2.end;
+        Serial.print(pulseGroupAngle(0));
+        Serial.print(" ");
+        Serial.println(pulseGroupAngle(1));
+      }
     }
     
    }
@@ -182,8 +208,6 @@ float pulseGroupAngle(int pin){
   long p3start = p3.start - p1.start;
 
   float angle = ((float) p2start) / ((float) p3start);
-  Serial.println(angle);
-  Serial.println();
   
   angle = angle - 0.5;
   angle = angle * 180;
@@ -191,4 +215,5 @@ float pulseGroupAngle(int pin){
   return angle;
   
 }
+
 
