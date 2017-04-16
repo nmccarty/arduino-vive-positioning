@@ -16,7 +16,7 @@ struct pulse {
   int maxHeight;
 };
 
-#define PULSE_HISTORY 3
+#define PULSE_HISTORY 6
 #define MIN_PULSE_WIDTH 20
 pulse pulseStack[6][PULSE_HISTORY];
 int currentPulse[6];
