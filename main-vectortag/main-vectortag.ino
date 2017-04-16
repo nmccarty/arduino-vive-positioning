@@ -11,6 +11,16 @@ int noiseMeans[6];
 int noiseStds[6];
 long lastSpike[6];
 
+struct pulse {
+  long start;
+  long end;
+  int maxHeight;
+};
+
+#define PULSE_HISTORY 3
+pulse pulseStack[6][PULSE_HISTORY];
+int currentPulse[6];
+
 void setup() {
   digitalWrite(13, 1);
   Serial.begin(2000000);
@@ -36,8 +46,10 @@ void setup() {
     free(noiseSamples[i]);
   }
   Serial.flush();
+  
   for(int i=0; i<6; i++){
     spiked[i] = false;
+    currentPulse[i] = 0;
   }
 
   delay(2000);
@@ -47,19 +59,30 @@ void setup() {
 
 void loop() {
   while(true){
-    bool spike = detectSpike(0,noiseMeans[0],noiseStds[0]);
-    if(!spiked[0] && spike){
-      lastSpike[0]=micros();
-      spiked[0] = true;
+   int activePins = 1;
+   for(int i = 0; i < activePins; i++){
+    long ttime = micros();
+    int pin = i;
+    int spike = detectSpike(0,noiseMeans[pin],noiseStds[pin]);
+    if(!spiked[pin] && (spike > 0)) {
+      currentPulse[pin] = (currentPulse[pin] + 1) % PULSE_HISTORY;
+      int cpulse = currentPulse[pin];
+      pulseStack[pin][cpulse] = {ttime,0,spike};
+      spiked[pin] =  true;
+    } else if(spiked[pin] && !(spike > 0)){
+      int cpulse = currentPulse[pin];
+      pulse ppulse = pulseStack[pin][cpulse];
+      int spikeValue = spike;
+      if(spikeValue < ppulse.maxHeight){
+        spikeValue = ppulse.maxHeight;
+      }
+      pulseStack[pin][cpulse] = {ppulse.start, ttime, spikeValue};
+
+      printPulse(pulseStack[pin][cpulse]);
+      spiked[pin] = false;
     }
-    if(spiked[0] && !spike){
-      long s = micros();
-      spiked[0] = false;
-      Serial.println(lastSpike[0]);
-      Serial.println(s - lastSpike[0]);
-      Serial.println();
-      Serial.flush();
-    }
+    
+   }
 }
   
 }
@@ -101,9 +124,22 @@ int stdDev(int* samples, int size){
   
 }
 
-bool detectSpike(int pin, int noise, int std){
+int detectSpike(int pin, int noise, int std){
   int value = analogRead(pin);
-  return value > (noise + std * stdTolerance);
+  if (value > (noise + std * stdTolerance)){
+    return value;
+  } else {
+    return 0;
+  }
+}
+
+void printPulse(pulse p){
+  Serial.print(p.start);
+  Serial.print(" ");
+  Serial.print(p.end - p.start);
+  Serial.print(" ");
+  Serial.println(p.maxHeight);
+  Serial.println();
 }
 
 
