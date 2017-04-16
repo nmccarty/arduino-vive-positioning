@@ -48,7 +48,7 @@ void setup() {
   while(!Serial);
   digitalWrite(13, 0);
 
-  Serial.println("You have 5 seconds to get your hands out of the way before calibration, you fuck.");
+  Serial.println("You have 5 seconds to get your hands out of the way before calibration.");
   delay(5000);
 
   analogReadResolution(10);
