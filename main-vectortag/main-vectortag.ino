@@ -1,3 +1,7 @@
+#include <BMI160.h>
+#include <CurieIMU.h>
+#include <MadgwickAHRS.h>
+
 #include <elapsedMillis.h>
 
 #include <CurieTime.h>
@@ -16,6 +20,8 @@ bool triggered = false;
 
 int buttonPin=7;
 
+long microsPrevious;
+
 struct pulse {
   long start;
   long end;
@@ -26,6 +32,15 @@ struct pulse {
 #define MIN_PULSE_WIDTH 20
 pulse pulseStack[6][PULSE_HISTORY];
 int currentPulse[6];
+
+
+Madgwick filter;
+
+float prevPulse1[2];
+float prevPulse2[2];
+
+long microsPerReading = 1000000 / 25;
+
 
 void setup() {
   digitalWrite(13, 1);
@@ -64,13 +79,73 @@ void setup() {
 
   pinMode(buttonPin,INPUT);
 
+  CurieIMU.begin();
+  CurieIMU.setGyroRate(25);
+  CurieIMU.setAccelerometerRate(25);
+  filter.begin(25);
+
+  // Set the accelerometer range to 2G
+  CurieIMU.setAccelerometerRange(2);
+  // Set the gyroscope range to 250 degrees/second
+  CurieIMU.setGyroRange(1000);
+
   delay(2000);
+
+  microsPrevious = micros();
 
   
 }
 
 void loop() {
   while(true){
+
+
+  int aix, aiy, aiz;
+  int gix, giy, giz;
+  float ax, ay, az;
+  float gx, gy, gz;
+  float roll, pitch, heading;
+  unsigned long microsNow;
+
+
+ 
+ /*if (microsNow - microsPrevious >= microsPerReading) {
+
+    // read raw data from CurieIMU
+    CurieIMU.readMotionSensor(aix, aiy, aiz, gix, giy, giz);
+
+    // convert from raw data to gravity and degrees/second units
+    ax = convertRawAcceleration(aix);
+    ay = convertRawAcceleration(aiy);
+    az = convertRawAcceleration(aiz);
+    gx = convertRawGyro(gix);
+    gy = convertRawGyro(giy);
+    gz = convertRawGyro(giz);
+
+    // update the filter, which computes orientation
+    filter.updateIMU(gx, gy, gz, ax, ay, az);
+
+    // print the heading, pitch and roll
+    roll = filter.getRoll();
+    pitch = filter.getPitch();
+    heading = filter.getYaw();
+    Serial.print("Orientation: ");
+    Serial.print(heading);
+    Serial.print(" ");
+    Serial.print(pitch);
+    Serial.print(" ");
+    Serial.println(roll);
+
+    // increment previous time, so we keep proper pace
+    microsPrevious = microsPrevious + microsPerReading;
+  } */
+
+
+
+
+
+
+
 
    bool trigger = digitalRead(buttonPin) == HIGH;
    if(!triggered && trigger){
@@ -102,6 +177,7 @@ void loop() {
         spiked[pin]=false;
       } else {
         pulseStack[pin][cpulse].start=ttime;
+        pulseStack[pin][cpulse].end=ttime;
       }
        
     } else if (spiked[pin]){
@@ -115,12 +191,35 @@ void loop() {
       pulse pulse1 = pulseStack[0][currentPulse[0]];
       pulse pulse2 = pulseStack[1][currentPulse[1]];
 
-      if((pulse1.end > lastPulseTime[0]) && (pulse2.end > lastPulseTime[1])){
+      if((pulse1.end > lastPulseTime[0]) && (pulse2.end > lastPulseTime[1]) && (pulse1.end > lastPulseTime[1]) && (pulse2.end > lastPulseTime[0])){
+
+        if(((pulse1.end - lastPulseTime[0] )< 100000) && ((pulse2.end - lastPulseTime[1]) < 100000)){
+          float pgangle1 = pulseGroupAngle(0);
+          float pgangle2 = pulseGroupAngle(1);
+
+          prevPulse2[0] = prevPulse1[0];
+          prevPulse1[0] = pgangle1;
+
+          prevPulse2[1] = prevPulse1[1];
+          prevPulse1[1] = pgangle2;
+
+          Serial.print(prevPulse1[0]);
+          Serial.print(" ");
+          Serial.println(prevPulse1[1]);
+
+          /*const float 
+
+          float l = 10; //inches 
+          float phi = filter.getHeading() * 0.0174533;
+          float th1 = (90-abs(pangle1)) * 0.0174533;
+          float th2 =*/
+          
+
+
+        
+        }
         lastPulseTime[0] = pulse1.end;
         lastPulseTime[1] = pulse2.end;
-        Serial.print(pulseGroupAngle(0));
-        Serial.print(" ");
-        Serial.println(pulseGroupAngle(1));
       }
     }
     
@@ -214,6 +313,24 @@ float pulseGroupAngle(int pin){
 
   return angle;
   
+}
+
+float convertRawAcceleration(int aRaw) {
+  // since we are using 2G range
+  // -2g maps to a raw value of -32768
+  // +2g maps to a raw value of 32767
+  
+  float a = (aRaw * 2.0) / 32768.0;
+  return a;
+}
+
+float convertRawGyro(int gRaw) {
+  // since we are using 250 degrees/seconds range
+  // -250 maps to a raw value of -32768
+  // +250 maps to a raw value of 32767
+  
+  float g = (gRaw * 1000.0) / 32768.0;
+  return g;
 }
 
 
