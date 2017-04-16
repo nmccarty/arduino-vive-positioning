@@ -30,7 +30,7 @@ void setup() {
   Serial.println("You have 5 seconds to get your hands out of the way before calibration, you fuck.");
   delay(5000);
 
-  analogReadResolution(12);
+  analogReadResolution(10);
 
   int numNoiseSamples= 100;
 
@@ -82,7 +82,7 @@ void loop() {
       pulseStack[pin][cpulse] = {ppulse.start, ttime, spikeValue};
       if((pulseStack[pin][cpulse].end - pulseStack[pin][cpulse].start) >= MIN_PULSE_WIDTH){
         spiked[pin]=false;
-        printPulse(pulseStack[pin][cpulse]);
+        //printPulse(pulseStack[pin][cpulse]);
         if(validPulseGroup(pin)){
           Serial.println(pulseGroupAngle(pin));
           Serial.println();
@@ -167,7 +167,9 @@ bool validPulseGroup(int pin){
   long p2time = p2.end - p2.start;
   long p3time = p3.end - p3.start;
 
-  return (p1time > p2time) && (p3time > p2time);
+  int tdiff = abs(((p1time - p3time) *100)/((p1time+p3time)/2));
+
+  return (p1time > p2time) && (p3time > p2time) && (p3.end > p1.end) && (tdiff <= 10);
 }
 
 float pulseGroupAngle(int pin){
