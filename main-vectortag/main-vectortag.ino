@@ -17,7 +17,7 @@ struct pulse {
 };
 
 #define PULSE_HISTORY 3
-#define MIN_PULSE_WIDTH 20
+#define MIN_PULSE_WIDTH 30
 pulse pulseStack[6][PULSE_HISTORY];
 int currentPulse[6];
 
